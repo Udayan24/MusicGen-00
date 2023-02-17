@@ -1,11 +1,12 @@
 '''
-MUSIC GENERATOR 0.0 - COMPONENT 2
+MUSIC GENERATOR 0.0 - COMPONENT 3
 BE-PROJECT 2023: 41102, 41113, 41117
 '''
 # Import required libraries
 from pyo import *
 from typing import List, Dict
 from random import choices
+from midiutil import MIDIFile
 
 # -----------------------------------------------------------------------------
 # PARAMETERS:
@@ -17,25 +18,10 @@ scale="minorM"
 root=3
 steps=1
 
-# ------------------------------------------------------------------------------
-def eventGen(genome, bits_per_note=bits_per_note, N_notes=N_notes) -> Events:
-    
-    # Create a list of notes taking 4 values out of genome at a time
-    notes = [genome[i:i+bits_per_note] for i in range(N_notes*bars)]
-
-    for n in notes:
-        print(n)
-
-    freqList = [50+sum([bit*pow(2,index) for index, bit in enumerate(note)]) for note in notes]
-    print("Frequencies generated:", freqList)
-       
-    return Events(
-        midinote = EventSeq(freqList, occurrences=1),
-        beat=1/4.
-    )
+bpm=128
 
 # -----------------------------------------------------------------------------
-def eventGen2(genome, bars, N_notes, steps, key, scale, root):
+def eventGen(genome, bars, N_notes, steps, key, scale, root):
     melody = melodyGen(genome, bars, N_notes, steps, key, scale, root)
     print("\nGenome:", genome)
     print("Bars:", bars)
@@ -110,6 +96,40 @@ def melodyGen(genome, bars, N_notes, n_steps, key, scale, root) -> Dict[str, lis
     return melody
 
 # --------------------------------------------------------------------------------
+def save_genome_to_midi(filename, genome, num_bars, num_notes, num_steps, key, scale, root, bpm):
+    
+    # Generate a melody dictionary
+    melody = melodyGen(genome, num_bars, num_notes, num_steps, key, scale, root)
+
+    # Check if all lists are of same size
+    if len(melody["notes"][0]) != len(melody["beat"]) or len(melody["notes"][0]) != len(melody["velocity"]):
+        raise ValueError
+
+    # Create a single track
+    mf = MIDIFile(1)
+
+    track = 0
+    channel = 0
+    time = 0.0
+
+    # Create a track and add file tempo
+    mf.addTrackName(track, time, "Generated Track")
+    mf.addTempo(track, time, bpm)
+
+    # Go through velocity list and add each note with non-zero volume
+    for i, vel in enumerate(melody["velocity"]):
+        if vel > 0:
+            for step in melody["notes"]:
+                mf.addNote(track, channel, step[i], time, melody["beat"][i], vel)
+
+        time += melody["beat"][i]
+
+    # Create a file called filename
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    with open(filename, "wb") as f:
+        mf.writeFile(f)
+
+# --------------------------------------------------------------------------------
 def metronome(bpm: int):
     met = Metro(time=1 / (bpm / 60.0)).play()
     t = CosTable([(0, 0), (50, 1), (200, .3), (500, 0)])
@@ -132,21 +152,12 @@ print("Genome:", genome)
 # Create PyO server and an event with our genome
 s=Server().boot()
 
-#e=eventGen(genome)
-#e.play()
+m=metronome(bpm)
 
-print("-----------------------")
-
-# Play a melody in D minor scale
-'''
-scl = EventScale(root="D", scale="minorM", type=2)
-f = Events(degree=EventDrunk(scl, maxStep=2, occurrences=N_notes*bars), beat=1/4.).play()
-'''
-
-m=metronome(128)
-
-eventss=eventGen2(genome, bars, N_notes, steps, key, scale, root)
+eventss=eventGen(genome, bars, N_notes, steps, key, scale, root)
 for e in eventss:
     e.play()
+
+save_genome_to_midi("C:\\Users\\udaya\\Documents\\000_BE_PROJECT\\PROJECT\\MIDI\\1.mid", genome, bars, N_notes, steps, key, scale, root, bpm)
 
 s.gui(locals())
