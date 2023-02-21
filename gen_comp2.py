@@ -138,10 +138,10 @@ s=Server().boot()
 print("-----------------------")
 
 # Play a melody in D minor scale
-'''
-scl = EventScale(root="D", scale="minorM", type=2)
-f = Events(degree=EventDrunk(scl, maxStep=2, occurrences=N_notes*bars), beat=1/4.).play()
-'''
+
+#scl = EventScale(root="D", scale="minorM", type=2)
+#f = Events(degree=EventDrunk(scl, maxStep=2, occurrences=N_notes*bars), beat=1/4.).play()
+
 
 m=metronome(128)
 
